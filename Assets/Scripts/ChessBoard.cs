@@ -11,6 +11,7 @@ public class ChessBoard : MonoBehaviour
     [SerializeField] private float deathSize = 0.3f;
     [SerializeField] private float deathSpacing = 0.3f;
     [SerializeField] private float dragOffset = 1.5f;
+    [SerializeField] private GameObject victoryScreen;
 
     [Header("Prefabs && Materials")]
     [SerializeField] private GameObject[] prefabs;
@@ -28,13 +29,14 @@ public class ChessBoard : MonoBehaviour
     private Camera currentCamera;
     private Vector2Int currentHover;
     private Vector3 bounds;
+    private bool isWhiteTurn;
 
     private void Awake()
     {
+        isWhiteTurn = true;
+
         GenerateAllTiles(tileSize, TILE_COUNT_X, TILE_COUNT_Y);
-
         SpawnAllPieces();
-
         PositionAllPieces();
     }
     private void Update()
@@ -48,7 +50,7 @@ public class ChessBoard : MonoBehaviour
         RaycastHit info;
         Ray ray = currentCamera.ScreenPointToRay(Input.mousePosition);
 
-        if (Physics.Raycast(ray, out info, 100, LayerMask.GetMask("Tile", "Hover")))
+        if (Physics.Raycast(ray, out info, 100, LayerMask.GetMask("Tile", "Hover", "Highlight")))
         {
             // Get the indexes of the tile I've hit
             Vector2Int hitPosition = LookupTileIndex(info.transform.gameObject);
@@ -59,7 +61,7 @@ public class ChessBoard : MonoBehaviour
                 // Remove hover effect from the previous tile
                 if (currentHover != -Vector2Int.one)
                 {
-                    tiles[currentHover.x, currentHover.y].layer = LayerMask.NameToLayer("Tile");
+                    tiles[currentHover.x, currentHover.y].layer = (ContainsValidMove(ref availableMoves, currentHover)) ? LayerMask.NameToLayer("Highlight") : LayerMask.NameToLayer("Tile");
                 }
 
                 // Apply hover effect to the current tile
@@ -71,7 +73,7 @@ public class ChessBoard : MonoBehaviour
             {
                 if (chessPieces[hitPosition.x, hitPosition.y] != null)
                 {
-                    if (true)
+                    if (chessPieces[hitPosition.x, hitPosition.y].team == 0 && isWhiteTurn || chessPieces[hitPosition.x, hitPosition.y].team == 1 && !isWhiteTurn)
                     {
                         currentlyDragging = chessPieces[hitPosition.x, hitPosition.y];
 
@@ -102,7 +104,7 @@ public class ChessBoard : MonoBehaviour
             // If not hovering over any tile, remove hover effect
             if (currentHover != -Vector2Int.one)
             {
-                tiles[currentHover.x, currentHover.y].layer = LayerMask.NameToLayer("Tile");
+                tiles[currentHover.x, currentHover.y].layer = (ContainsValidMove(ref availableMoves, currentHover)) ? LayerMask.NameToLayer("Highlight") : LayerMask.NameToLayer("Tile");
                 currentHover = -Vector2Int.one;
             }
 
@@ -212,7 +214,7 @@ public class ChessBoard : MonoBehaviour
 
         chesspiece.type = type;
         chesspiece.team = team;
-        chesspiece.GetComponent<MeshRenderer>().material = teamMaterials[team];
+        chesspiece.GetComponent<MeshRenderer>().material = teamMaterials[((team == 0) ? 0 : 6) + ((int)type -1)];
 
         return chesspiece;
     }
@@ -260,10 +262,78 @@ public class ChessBoard : MonoBehaviour
         availableMoves.Clear();
     }
 
+    //CheckMate
+    private void CheckMate(int team)
+    {
+        DisplayVictory(team);
+    }
+    private void DisplayVictory(int winningTeam)
+    {
+        victoryScreen.SetActive(true);
+        victoryScreen.transform.GetChild(winningTeam).gameObject.SetActive(true);
+    }
+    public void OnResetButton()
+    {
+        // UI
+        victoryScreen.transform.GetChild(0).gameObject.SetActive(false);
+        victoryScreen.transform.GetChild(1).gameObject.SetActive(false);
+        victoryScreen.SetActive(false);
+
+        // Field Reset
+        currentlyDragging = null;
+        availableMoves = new List<Vector2Int>();
+
+        // Clean Up
+        for(int x = 0; x < TILE_COUNT_X; x++)
+        {
+            for(int y = 0; y < TILE_COUNT_Y; y++)
+            {
+                if (chessPieces[x, y] != null)
+                {
+                    Destroy(chessPieces[x, y].gameObject);
+                }
+                chessPieces[x, y] = null;
+            }
+        }
+
+        for(int i = 0; i < deadWhites.Count; i++)
+        {
+            Destroy(deadWhites[i].gameObject);
+        }
+
+        for(int i = 0; i < deadBlacks.Count; i++)
+        {
+            Destroy(deadBlacks[i].gameObject);
+        }
+
+        deadWhites.Clear();
+        deadBlacks.Clear();
+
+        SpawnAllPieces();
+        PositionAllPieces();
+        isWhiteTurn = true;
+    }
+    public void OnExitButton()
+    {
+        Application.Quit();
+    }
 
     //Opertaions
+    private bool ContainsValidMove(ref List<Vector2Int> moves, Vector2 pos)
+    {
+        for(int i = 0; i < moves.Count; i++)
+        {
+            if (moves[i].x == pos.x && moves[i].y == pos.y)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
     private bool MoveTo(ChessPiece chessPiece, int x, int y)
     {
+        if(!ContainsValidMove(ref availableMoves, new Vector2(x, y))) return false;
+
         Vector2Int previousPosition = new Vector2Int(chessPiece.currentX, chessPiece.currentY);
 
         if (chessPieces[x, y] != null)
@@ -277,6 +347,8 @@ public class ChessBoard : MonoBehaviour
 
             if(otherChessPiece.team == 0)
             {
+                if (otherChessPiece.type == ChessPieceType.King) CheckMate(1);
+
                 deadWhites.Add(otherChessPiece);
                 otherChessPiece.SetScale(Vector3.one * deathSize);
                 otherChessPiece.SetPosition(
@@ -287,6 +359,8 @@ public class ChessBoard : MonoBehaviour
             }
             else
             {
+                if (otherChessPiece.type == ChessPieceType.King) CheckMate(0);
+
                 deadBlacks.Add(otherChessPiece);
                 otherChessPiece.SetScale(Vector3.one * deathSize);
                 otherChessPiece.SetPosition(
@@ -301,6 +375,8 @@ public class ChessBoard : MonoBehaviour
         chessPieces[previousPosition.x, previousPosition.y] = null;
 
         PositionSinglePiece(x, y);
+
+        isWhiteTurn = !isWhiteTurn;
 
         return true;
     }
