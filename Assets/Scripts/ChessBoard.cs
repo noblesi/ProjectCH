@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Networking.Transport;
 using UnityEngine;
 using static UnityEngine.InputSystem.HID.HID;
 
@@ -42,13 +43,20 @@ public class ChessBoard : MonoBehaviour
     private SpecialMove specialMove;
     private List<Vector2Int[]> moveList = new List<Vector2Int[]>();
 
-    private void Awake()
+    // Multi Logic
+    private int playerCount = -1;
+    private int currentTeam = -1;
+    private bool localGame = true;
+
+    private void Start()
     {
         isWhiteTurn = true;
 
         GenerateAllTiles(tileSize, TILE_COUNT_X, TILE_COUNT_Y);
         SpawnAllPieces();
         PositionAllPieces();
+
+        RegisterEvents();
     }
     private void Update()
     {
@@ -84,7 +92,7 @@ public class ChessBoard : MonoBehaviour
             {
                 if (chessPieces[hitPosition.x, hitPosition.y] != null)
                 {
-                    if (chessPieces[hitPosition.x, hitPosition.y].team == 0 && isWhiteTurn || chessPieces[hitPosition.x, hitPosition.y].team == 1 && !isWhiteTurn)
+                    if (chessPieces[hitPosition.x, hitPosition.y].team == 0 && isWhiteTurn && currentTeam == 0|| chessPieces[hitPosition.x, hitPosition.y].team == 1 && !isWhiteTurn && currentTeam == 1)
                     {
                         currentlyDragging = chessPieces[hitPosition.x, hitPosition.y];
 
@@ -647,6 +655,10 @@ public class ChessBoard : MonoBehaviour
         PositionSinglePiece(x, y);
 
         isWhiteTurn = !isWhiteTurn;
+        if (localGame)
+        {
+            currentTeam = (currentTeam == 0) ? 1 : 0;
+        }
         moveList.Add(new Vector2Int[] { previousPosition, new Vector2Int(x, y) });
 
         ProcessSpecialMove();
@@ -671,4 +683,66 @@ public class ChessBoard : MonoBehaviour
         return -Vector2Int.one; //Invalid
     }
 
+    #region
+    private void RegisterEvents()
+    {
+        NetUtility.S_WELCOME += OnWelcomeServer;
+
+        NetUtility.C_WELCOME += OnWelcomeClient;
+        NetUtility.C_START_GAME += OnStartGameClient;
+
+        GameUI.Instance.SetLocalGame += OnSetLocalGame;
+    }
+    private void UnregisterEvents()
+    {
+        NetUtility.S_WELCOME -= OnWelcomeServer;
+
+        NetUtility.C_WELCOME -= OnWelcomeClient;
+        NetUtility.C_START_GAME -= OnStartGameClient;
+
+        GameUI.Instance.SetLocalGame -= OnSetLocalGame;
+    }
+
+    // Server
+    private void OnWelcomeServer(NetMessage msg, NetworkConnection cnn)
+    {
+        // Client has connected, assign a team and return the message back
+        NetWelcome nw = msg as NetWelcome;
+
+        nw.AssignedTeam = ++playerCount;
+
+        Server.Instance.SendToClient(cnn, nw);
+
+        //
+        if(playerCount == 1)
+        {
+            Server.Instance.Broadcast(new NetStartGame());
+        }
+    }
+
+    // Client
+    private void OnWelcomeClient(NetMessage msg)
+    {
+        NetWelcome nw = msg as NetWelcome;
+
+        currentTeam = nw.AssignedTeam;
+
+        Debug.Log($"My assigned team is {nw.AssignedTeam}");
+
+        if(localGame && currentTeam == 0)
+        {
+            Server.Instance.Broadcast(new NetStartGame());
+        }
+    }
+    private void OnStartGameClient(NetMessage obj)
+    {
+        GameUI.Instance.ChangeCamera((currentTeam == 0) ? CameraAngle.WhiteTeam : CameraAngle.BlackTeam);
+    }
+
+    // Local
+    private void OnSetLocalGame(bool value)
+    {
+        localGame = value;
+    }
+    #endregion
 }
