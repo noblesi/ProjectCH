@@ -95,18 +95,18 @@ public class Client : MonoBehaviour
     {
         DataStreamWriter writer;
         driver.BeginSend(connection, out writer);
-        //msg.Serialize(ref writer);
+        msg.Serialize(ref writer);
         driver.EndSend(writer);
     }
 
     // Event Parsing
     private void RegisterToEvent()
     {
-        //NetUtility.C_KEEP_ALIVE += OnKeepAlive;
+        NetUtility.C_KEEP_ALIVE += OnKeepAlive;
     }
     private void UnregisterToEvent()
     {
-        //NetUtility.C_KEEP_ALIVE -= OnKeepAlive;
+        NetUtility.C_KEEP_ALIVE -= OnKeepAlive;
     }
     private void OnKeepAlive(NetMessage msg)
     {
