@@ -396,109 +396,123 @@ public class ChessBoard : MonoBehaviour
     //Special Moves
     private void ProcessSpecialMove()
     {
-        if(specialMove == SpecialMove.EnPassant)
+        switch (specialMove)
         {
-            Vector2Int[] newMove = moveList[moveList.Count - 1];
-            ChessPiece myPawn = chessPieces[newMove[1].x, newMove[1].y];
-            Vector2Int[] targetPawnPosition = moveList[moveList.Count - 2];
-            ChessPiece enemyPawn = chessPieces[targetPawnPosition[1].x, targetPawnPosition[1].y];
-
-            if(myPawn.currentX == enemyPawn.currentX)
-            {
-                if(myPawn.currentY == enemyPawn.currentY - 1 || myPawn.currentY < enemyPawn.currentY + 1)
-                {
-                    if(enemyPawn.team == 0)
-                    {
-                        deadWhites.Add(enemyPawn);
-                        enemyPawn.SetScale(Vector3.one * deathSize);
-                        enemyPawn.SetPosition(
-                            new Vector3(8 * tileSize, yOffset, -1 * tileSize)
-                            - bounds
-                            + new Vector3(tileSize / 2, 0, tileSize / 2)
-                            + (Vector3.forward * deathSpacing) * deadWhites.Count);
-                    }
-                    else
-                    {
-                        deadBlacks.Add(enemyPawn);
-                        enemyPawn.SetScale(Vector3.one * deathSize);
-                        enemyPawn.SetPosition(
-                            new Vector3(-1 * tileSize, yOffset, 8 * tileSize)
-                            - bounds
-                            + new Vector3(tileSize / 2, 0, tileSize / 2)
-                            + (Vector3.back * deathSpacing) * deadBlacks.Count);
-                    }
-                    chessPieces[enemyPawn.currentX, enemyPawn.currentY] = null;
-                }
-            }
+            case SpecialMove.EnPassant:
+                HandleEnPassant();
+                break;
+            case SpecialMove.Promotion:
+                HandlePromotion();
+                break;
+            case SpecialMove.Castling:
+                HandleCastling();
+                break;
+            case SpecialMove.None:
+            default:
+                break;
         }
+    }
+    private void HandleEnPassant()
+    {
+        Vector2Int[] newMove = moveList[moveList.Count - 1];
+        ChessPiece myPawn = chessPieces[newMove[1].x, newMove[1].y];
+        Vector2Int[] targetPawnPosition = moveList[moveList.Count - 2];
+        ChessPiece enemyPawn = chessPieces[targetPawnPosition[1].x, targetPawnPosition[1].y];
 
-        if(specialMove == SpecialMove.Promotion)
+        if (myPawn.currentX == enemyPawn.currentX)
         {
-            Vector2Int[] lastMove = moveList[moveList.Count - 1];
-            ChessPiece targetPawn = chessPieces[lastMove[1].x, lastMove[1].y];
-
-            if(targetPawn.type == ChessPieceType.Pawn)
+            if (myPawn.currentY == enemyPawn.currentY - 1 || myPawn.currentY < enemyPawn.currentY + 1)
             {
-                if(targetPawn.team == 0 && lastMove[1].y == 7)
+                if (enemyPawn.team == 0)
                 {
-                    ChessPiece newQueen = SpawnSinglePiece(ChessPieceType.Queen, 0);
-                    newQueen.transform.position = chessPieces[lastMove[1].x, lastMove[1].y].transform.position;
-                    Destroy(chessPieces[lastMove[1].x, lastMove[1].y].gameObject);
-                    chessPieces[lastMove[1].x, lastMove[1].y] = newQueen;
-                    PositionSinglePiece(lastMove[1].x, lastMove[1].y);
+                    deadWhites.Add(enemyPawn);
+                    enemyPawn.SetScale(Vector3.one * deathSize);
+                    enemyPawn.SetPosition(
+                        new Vector3(8 * tileSize, yOffset, -1 * tileSize)
+                        - bounds
+                        + new Vector3(tileSize / 2, 0, tileSize / 2)
+                        + (Vector3.forward * deathSpacing) * deadWhites.Count);
                 }
-
-                if (targetPawn.team == 1 && lastMove[1].y == 0)
+                else
                 {
-                    ChessPiece newQueen = SpawnSinglePiece(ChessPieceType.Queen, 1);
-                    newQueen.transform.position = chessPieces[lastMove[1].x, lastMove[1].y].transform.position;
-                    Destroy(chessPieces[lastMove[1].x, lastMove[1].y].gameObject);
-                    chessPieces[lastMove[1].x, lastMove[1].y] = newQueen;
-                    PositionSinglePiece(lastMove[1].x, lastMove[1].y);
+                    deadBlacks.Add(enemyPawn);
+                    enemyPawn.SetScale(Vector3.one * deathSize);
+                    enemyPawn.SetPosition(
+                        new Vector3(-1 * tileSize, yOffset, 8 * tileSize)
+                        - bounds
+                        + new Vector3(tileSize / 2, 0, tileSize / 2)
+                        + (Vector3.back * deathSpacing) * deadBlacks.Count);
                 }
-            }
-        }
-
-        if(specialMove == SpecialMove.Castling)
-        {
-            Vector2Int[] lastMove = moveList[moveList.Count - 1];
-
-            if (lastMove[1].x == 2)
-            {
-                if (lastMove[1].y == 0)
-                {
-                    ChessPiece rook = chessPieces[0, 0];
-                    chessPieces[3, 0] = rook;
-                    PositionSinglePiece(3, 0);
-                    chessPieces[0, 0] = null;
-                }
-                else if (lastMove[1].y == 7)
-                {
-                    ChessPiece rook = chessPieces[0, 7];
-                    chessPieces[3, 7] = rook;
-                    PositionSinglePiece(3, 7);
-                    chessPieces[0, 7] = null;
-                }
-            }
-            else if (lastMove[1].x == 6)
-            {
-                if (lastMove[1].y == 0)
-                {
-                    ChessPiece rook = chessPieces[7, 0];
-                    chessPieces[5, 0] = rook;
-                    PositionSinglePiece(5, 0);
-                    chessPieces[7, 0] = null;
-                }
-                else if (lastMove[1].y == 7)
-                {
-                    ChessPiece rook = chessPieces[7, 7];
-                    chessPieces[5, 7] = rook;
-                    PositionSinglePiece(5, 7);
-                    chessPieces[7, 7] = null;
-                }
+                chessPieces[enemyPawn.currentX, enemyPawn.currentY] = null;
             }
         }
     }
+    private void HandlePromotion()
+    {
+        Vector2Int[] lastMove = moveList[moveList.Count - 1];
+        ChessPiece targetPawn = chessPieces[lastMove[1].x, lastMove[1].y];
+
+        if (targetPawn.type == ChessPieceType.Pawn)
+        {
+            if (targetPawn.team == 0 && lastMove[1].y == 7)
+            {
+                ChessPiece newQueen = SpawnSinglePiece(ChessPieceType.Queen, 0);
+                newQueen.transform.position = chessPieces[lastMove[1].x, lastMove[1].y].transform.position;
+                Destroy(chessPieces[lastMove[1].x, lastMove[1].y].gameObject);
+                chessPieces[lastMove[1].x, lastMove[1].y] = newQueen;
+                PositionSinglePiece(lastMove[1].x, lastMove[1].y);
+            }
+
+            if (targetPawn.team == 1 && lastMove[1].y == 0)
+            {
+                ChessPiece newQueen = SpawnSinglePiece(ChessPieceType.Queen, 1);
+                newQueen.transform.position = chessPieces[lastMove[1].x, lastMove[1].y].transform.position;
+                Destroy(chessPieces[lastMove[1].x, lastMove[1].y].gameObject);
+                chessPieces[lastMove[1].x, lastMove[1].y] = newQueen;
+                PositionSinglePiece(lastMove[1].x, lastMove[1].y);
+            }
+        }
+    }
+    private void HandleCastling()
+    {
+        Vector2Int[] lastMove = moveList[moveList.Count - 1];
+
+        if (lastMove[1].x == 2)
+        {
+            if (lastMove[1].y == 0)
+            {
+                ChessPiece rook = chessPieces[0, 0];
+                chessPieces[3, 0] = rook;
+                PositionSinglePiece(3, 0);
+                chessPieces[0, 0] = null;
+            }
+            else if (lastMove[1].y == 7)
+            {
+                ChessPiece rook = chessPieces[0, 7];
+                chessPieces[3, 7] = rook;
+                PositionSinglePiece(3, 7);
+                chessPieces[0, 7] = null;
+            }
+        }
+        else if (lastMove[1].x == 6)
+        {
+            if (lastMove[1].y == 0)
+            {
+                ChessPiece rook = chessPieces[7, 0];
+                chessPieces[5, 0] = rook;
+                PositionSinglePiece(5, 0);
+                chessPieces[7, 0] = null;
+            }
+            else if (lastMove[1].y == 7)
+            {
+                ChessPiece rook = chessPieces[7, 7];
+                chessPieces[5, 7] = rook;
+                PositionSinglePiece(5, 7);
+                chessPieces[7, 7] = null;
+            }
+        }
+    }
+
     private void PreventCheck()
     {
         ChessPiece targetKing = null;
