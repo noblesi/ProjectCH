@@ -69,7 +69,7 @@ public class Server : MonoBehaviour
     }
     private void KeepAlive()
     {
-        if(Time.time - lastKeepAlive < keepAliveTickRate)
+        if(Time.time - lastKeepAlive > keepAliveTickRate)
         {
             lastKeepAlive = Time.time;
             Broadcast(new NetKeepAlive());

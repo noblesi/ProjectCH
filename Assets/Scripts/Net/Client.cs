@@ -1,8 +1,6 @@
 using System;
-using System.Net;
 using Unity.Collections;
 using Unity.Networking.Transport;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class Client : MonoBehaviour
@@ -54,7 +52,6 @@ public class Client : MonoBehaviour
 
         driver.ScheduleUpdate().Complete();
         CheckAlive();
-
         UpdateMessagePump();
     }
     private void CheckAlive()

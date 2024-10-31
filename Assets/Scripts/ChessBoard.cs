@@ -763,7 +763,7 @@ public class ChessBoard : MonoBehaviour
         Server.Instance.SendToClient(cnn, nw);
 
         //
-        if(playerCount == 1)
+        if (playerCount == 1)
         {
             Server.Instance.Broadcast(new NetStartGame());
         }
@@ -788,7 +788,7 @@ public class ChessBoard : MonoBehaviour
 
         Debug.Log($"My assigned team is {nw.AssignedTeam}");
 
-        if(localGame && currentTeam == 0)
+        if (localGame && currentTeam == 0)
         {
             Server.Instance.Broadcast(new NetStartGame());
         }
@@ -803,7 +803,7 @@ public class ChessBoard : MonoBehaviour
 
         Debug.Log($"MM : {mm.teamId} : {mm.originalX} {mm.originalY} -> {mm.destinationY} {mm.destinationY}");
 
-        if(mm.teamId != currentTeam)
+        if (mm.teamId != currentTeam)
         {
             ChessPiece target = chessPieces[mm.originalX, mm.originalY];
 
@@ -821,7 +821,7 @@ public class ChessBoard : MonoBehaviour
         if (rm.teamId != currentTeam)
         {
             rematchIndicator.transform.GetChild((rm.wantRematch == 1) ? 0 : 1).gameObject.SetActive(true);
-            if(rm.wantRematch != 1)
+            if (rm.wantRematch != 1)
             {
                 rematchButton.interactable = false;
             }
@@ -831,7 +831,6 @@ public class ChessBoard : MonoBehaviour
 
 
     }
-
 
     // Local
     private void ShutdownRelay()
