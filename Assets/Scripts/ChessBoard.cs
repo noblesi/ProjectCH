@@ -419,32 +419,20 @@ public class ChessBoard : MonoBehaviour
         Vector2Int[] targetPawnPosition = moveList[moveList.Count - 2];
         ChessPiece enemyPawn = chessPieces[targetPawnPosition[1].x, targetPawnPosition[1].y];
 
-        if (myPawn.currentX == enemyPawn.currentX)
+        if (myPawn.currentX == enemyPawn.currentX &&
+            (myPawn.currentY == enemyPawn.currentY - 1 || myPawn.currentY < enemyPawn.currentY + 1))
         {
-            if (myPawn.currentY == enemyPawn.currentY - 1 || myPawn.currentY < enemyPawn.currentY + 1)
+            if (enemyPawn.team == 0)
             {
-                if (enemyPawn.team == 0)
-                {
-                    deadWhites.Add(enemyPawn);
-                    enemyPawn.SetScale(Vector3.one * deathSize);
-                    enemyPawn.SetPosition(
-                        new Vector3(8 * tileSize, yOffset, -1 * tileSize)
-                        - bounds
-                        + new Vector3(tileSize / 2, 0, tileSize / 2)
-                        + (Vector3.forward * deathSpacing) * deadWhites.Count);
-                }
-                else
-                {
-                    deadBlacks.Add(enemyPawn);
-                    enemyPawn.SetScale(Vector3.one * deathSize);
-                    enemyPawn.SetPosition(
-                        new Vector3(-1 * tileSize, yOffset, 8 * tileSize)
-                        - bounds
-                        + new Vector3(tileSize / 2, 0, tileSize / 2)
-                        + (Vector3.back * deathSpacing) * deadBlacks.Count);
-                }
-                chessPieces[enemyPawn.currentX, enemyPawn.currentY] = null;
+                deadWhites.Add(enemyPawn);
+                UpdateDeadPiecePosition(enemyPawn, deadWhites.Count, isWhite: true);
             }
+            else
+            {
+                deadBlacks.Add(enemyPawn);
+                UpdateDeadPiecePosition(enemyPawn, deadBlacks.Count, isWhite: false);
+            }
+            chessPieces[enemyPawn.currentX, enemyPawn.currentY] = null;
         }
     }
     private void HandlePromotion()
@@ -454,20 +442,14 @@ public class ChessBoard : MonoBehaviour
 
         if (targetPawn.type == ChessPieceType.Pawn)
         {
-            if (targetPawn.team == 0 && lastMove[1].y == 7)
-            {
-                ChessPiece newQueen = SpawnSinglePiece(ChessPieceType.Queen, 0);
-                newQueen.transform.position = chessPieces[lastMove[1].x, lastMove[1].y].transform.position;
-                Destroy(chessPieces[lastMove[1].x, lastMove[1].y].gameObject);
-                chessPieces[lastMove[1].x, lastMove[1].y] = newQueen;
-                PositionSinglePiece(lastMove[1].x, lastMove[1].y);
-            }
+            int team = targetPawn.team;
+            int promotionRow = team == 0 ? 7 : 0;
 
-            if (targetPawn.team == 1 && lastMove[1].y == 0)
+            if (lastMove[1].y == promotionRow)
             {
-                ChessPiece newQueen = SpawnSinglePiece(ChessPieceType.Queen, 1);
-                newQueen.transform.position = chessPieces[lastMove[1].x, lastMove[1].y].transform.position;
-                Destroy(chessPieces[lastMove[1].x, lastMove[1].y].gameObject);
+                ChessPiece newQueen = SpawnSinglePiece(ChessPieceType.Queen, team);
+                newQueen.transform.position = targetPawn.transform.position;
+                Destroy(targetPawn.gameObject);
                 chessPieces[lastMove[1].x, lastMove[1].y] = newQueen;
                 PositionSinglePiece(lastMove[1].x, lastMove[1].y);
             }
@@ -476,43 +458,33 @@ public class ChessBoard : MonoBehaviour
     private void HandleCastling()
     {
         Vector2Int[] lastMove = moveList[moveList.Count - 1];
+        int yPosition = lastMove[1].y;
 
         if (lastMove[1].x == 2)
         {
-            if (lastMove[1].y == 0)
-            {
-                ChessPiece rook = chessPieces[0, 0];
-                chessPieces[3, 0] = rook;
-                PositionSinglePiece(3, 0);
-                chessPieces[0, 0] = null;
-            }
-            else if (lastMove[1].y == 7)
-            {
-                ChessPiece rook = chessPieces[0, 7];
-                chessPieces[3, 7] = rook;
-                PositionSinglePiece(3, 7);
-                chessPieces[0, 7] = null;
-            }
+            ChessPiece rook = chessPieces[0, yPosition];
+            if (rook != null) PositionRookAfterCastling(rook, 3, yPosition, 0);
         }
         else if (lastMove[1].x == 6)
         {
-            if (lastMove[1].y == 0)
-            {
-                ChessPiece rook = chessPieces[7, 0];
-                chessPieces[5, 0] = rook;
-                PositionSinglePiece(5, 0);
-                chessPieces[7, 0] = null;
-            }
-            else if (lastMove[1].y == 7)
-            {
-                ChessPiece rook = chessPieces[7, 7];
-                chessPieces[5, 7] = rook;
-                PositionSinglePiece(5, 7);
-                chessPieces[7, 7] = null;
-            }
+            ChessPiece rook = chessPieces[7, yPosition];
+            if (rook != null) PositionRookAfterCastling(rook, 5, yPosition, 7);
         }
     }
-
+    private void UpdateDeadPiecePosition(ChessPiece piece, int count, bool isWhite)
+    {
+        piece.SetScale(Vector3.one * deathSize);
+        Vector3 basePosition = isWhite ? new Vector3(8 * tileSize, yOffset, -1 * tileSize) - bounds :
+                                          new Vector3(-1 * tileSize, yOffset, 8 * tileSize) - bounds;
+        Vector3 offset = isWhite ? Vector3.forward : Vector3.back;
+        piece.SetPosition(basePosition + new Vector3(tileSize / 2, 0, tileSize / 2) + (offset * deathSpacing * count));
+    }
+    private void PositionRookAfterCastling(ChessPiece rook, int newX, int newY, int originalX)
+    {
+        chessPieces[newX, newY] = rook;
+        PositionSinglePiece(newX, newY);
+        chessPieces[originalX, newY] = null;
+    }
     private void PreventCheck()
     {
         ChessPiece targetKing = null;
